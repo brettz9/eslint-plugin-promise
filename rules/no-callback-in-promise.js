@@ -13,6 +13,7 @@ const isCallback = require('./lib/is-callback')
 
 const CB_BLACKLIST = ['callback', 'cb', 'next', 'done']
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'suggestion',
@@ -49,8 +50,14 @@ module.exports = {
           // but we also need to watch out for whatever.then(cb)
           if (hasPromiseCallback(node)) {
             const name =
-              node.arguments && node.arguments[0] && node.arguments[0].name
-            if (!exceptions.includes(name) && CB_BLACKLIST.includes(name)) {
+              node.arguments?.[0] &&
+              'name' in node.arguments[0] &&
+              node.arguments[0].name
+            if (
+              !exceptions.includes(name) &&
+              name &&
+              CB_BLACKLIST.includes(name)
+            ) {
               context.report({
                 node: node.arguments[0],
                 messageId: 'callback',

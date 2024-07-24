@@ -6,6 +6,10 @@
 const { getScope } = require('./lib/eslint-compat')
 const getDocsUrl = require('./lib/get-docs-url')
 
+/**
+ * @param {import('eslint').Scope.Scope} scope
+ * @param {import('eslint').Scope.Reference} ref
+ */
 function isDeclared(scope, ref) {
   return scope.variables.some((variable) => {
     if (variable.name !== ref.identifier.name) {
@@ -24,6 +28,7 @@ function isDeclared(scope, ref) {
   })
 }
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'suggestion',
@@ -41,7 +46,7 @@ module.exports = {
     /**
      * Checks for and reports reassigned constants
      *
-     * @param {Scope} scope - an eslint-scope Scope object
+     * @param {import('eslint').Scope.Scope} scope - an eslint-scope Scope object
      * @returns {void}
      * @private
      */
@@ -49,13 +54,19 @@ module.exports = {
       'Program:exit'(node) {
         const scope = getScope(context, node)
         const leftToBeResolved =
-          scope.implicit.left ||
-          /**
-           * Fixes https://github.com/eslint-community/eslint-plugin-promise/issues/205.
-           * The problem was that @typescript-eslint has a scope manager
-           * which has `leftToBeResolved` instead of the default `left`.
-           */
-          scope.implicit.leftToBeResolved
+          /** @type {import('eslint').Scope.Reference[]} */ (
+            /** @type {import('eslint').Scope.Scope & {implicit: {left: import('eslint').Scope.Reference[]}}} */ (
+              scope
+            ).implicit.left ||
+              /**
+               * Fixes https://github.com/eslint-community/eslint-plugin-promise/issues/205.
+               * The problem was that @typescript-eslint has a scope manager
+               * which has `leftToBeResolved` instead of the default `left`.
+               */
+              /** @type {import('eslint').Scope.Scope & {implicit: {leftToBeResolved: import('eslint').Scope.Reference[]}}} */ (
+                scope
+              ).implicit.leftToBeResolved
+          )
 
         leftToBeResolved.forEach((ref) => {
           if (ref.identifier.name !== 'Promise') {

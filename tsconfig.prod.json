@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "lib": ["es2023"],
+    "moduleResolution": "nodenext",
+    "module": "NodeNext",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "strict": true,
+    "target": "es2020",
+    "outDir": "dist"
+  },
+  "include": ["index.js", "rules/**/*.js"],
+  "exclude": ["node_modules"]
+}

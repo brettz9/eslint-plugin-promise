@@ -9,6 +9,7 @@ const { getAncestors, getScope } = require('./lib/eslint-compat')
 const getDocsUrl = require('./lib/get-docs-url')
 const isMemberCallWithObjectName = require('./lib/is-member-call-with-object-name')
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'suggestion',
@@ -32,7 +33,10 @@ module.exports = {
     },
   },
   create(context) {
-    /** Returns true if node is inside yield or await expression. */
+    /**
+     * Returns true if node is inside yield or await expression.
+     * @param {import('eslint').Rule.Node} node
+     */
     function isInsideYieldOrAwait(node) {
       return getAncestors(context, node).some((parent) => {
         return (
@@ -41,7 +45,10 @@ module.exports = {
       })
     }
 
-    /** Returns true if node is inside a constructor */
+    /**
+     * Returns true if node is inside a constructor
+     * @param {import('eslint').Rule.Node} node
+     */
     function isInsideConstructor(node) {
       return getAncestors(context, node).some((parent) => {
         return (
@@ -54,6 +61,7 @@ module.exports = {
      * Returns true if node is created at the top-level scope.
      * Await statements are not allowed at the top level,
      * only within function declarations.
+     * @param {import('eslint').Rule.Node} node
      */
     function isTopLevelScoped(node) {
       return getScope(context, node).block.type === 'Program'
@@ -62,6 +70,9 @@ module.exports = {
     const { strict } = context.options[0] || {}
 
     return {
+      /**
+       * @param {import('eslint').Rule.Node} node
+       */
       'CallExpression > MemberExpression.callee'(node) {
         if (
           isTopLevelScoped(node) ||
@@ -74,7 +85,9 @@ module.exports = {
 
         // if you're a then/catch/finally expression then you're probably a promise
         if (
+          'property' in node &&
           node.property &&
+          'name' in node.property &&
           (node.property.name === 'then' ||
             node.property.name === 'catch' ||
             node.property.name === 'finally')

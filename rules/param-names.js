@@ -5,6 +5,7 @@ const {
   isPromiseConstructorWithInlineExecutor,
 } = require('./lib/is-promise-constructor')
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'suggestion',
@@ -47,7 +48,8 @@ module.exports = {
             return
           }
 
-          const resolveParamName = params[0] && params[0].name
+          const resolveParamName =
+            params[0] && 'name' in params[0] && params[0].name
           if (resolveParamName && !resolvePattern.test(resolveParamName)) {
             context.report({
               node: params[0],
@@ -57,7 +59,8 @@ module.exports = {
               },
             })
           }
-          const rejectParamName = params[1] && params[1].name
+          const rejectParamName =
+            params[1] && 'name' in params[1] && params[1].name
           if (rejectParamName && !rejectPattern.test(rejectParamName)) {
             context.report({
               node: params[1],

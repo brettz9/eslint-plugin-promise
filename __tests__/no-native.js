@@ -36,21 +36,25 @@ for (const ruleTester of ruleTesters) {
       {
         code: 'new Promise(function(reject, resolve) { })',
         errors: [{ message: '"Promise" is not defined.' }],
+        // @ts-expect-error Should be available in ESLint 8 RuleTester
         env: { browser: true },
       },
       {
         code: 'new Promise(function(reject, resolve) { })',
         errors: [{ message: '"Promise" is not defined.' }],
+        // @ts-expect-error Should be available in ESLint 8 RuleTester
         env: { node: true },
       },
       {
         code: 'Promise.resolve()',
         errors: [{ message: '"Promise" is not defined.' }],
+        // @ts-expect-error Should be available in ESLint 8 RuleTester
         env: { es6: true },
       },
       {
         code: 'Promise.resolve()',
         errors: [{ message: '"Promise" is not defined.' }],
+        // @ts-expect-error Should be available in ESLint 8 RuleTester
         globals: { Promise: true },
       },
     ],

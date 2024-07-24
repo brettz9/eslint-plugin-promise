@@ -10,15 +10,21 @@ const { getAncestors } = require('./lib/eslint-compat')
 const getDocsUrl = require('./lib/get-docs-url')
 const isPromise = require('./lib/is-promise')
 
+/**
+ * @param {import('eslint').Rule.RuleContext} context
+ * @param {import('eslint').Rule.Node} node
+ */
 function isInPromise(context, node) {
-  let functionNode = getAncestors(context, node)
-    .filter((node) => {
-      return (
-        node.type === 'ArrowFunctionExpression' ||
-        node.type === 'FunctionExpression'
-      )
-    })
-    .reverse()[0]
+  let functionNode = /** @type {import('eslint').Rule.Node} */ (
+    getAncestors(context, node)
+      .filter((node) => {
+        return (
+          node.type === 'ArrowFunctionExpression' ||
+          node.type === 'FunctionExpression'
+        )
+      })
+      .reverse()[0]
+  )
   while (
     functionNode &&
     functionNode.parent &&
@@ -35,6 +41,7 @@ function isInPromise(context, node) {
   return functionNode && functionNode.parent && isPromise(functionNode.parent)
 }
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'suggestion',
@@ -65,14 +72,17 @@ module.exports = {
 
     /**
      * Checks a call expression, reporting if necessary.
-     * @param callExpression The call expression.
-     * @param node The node to report.
+     * @param {import('estree').CallExpression
+     * } callExpression The call expression.
+     * @param {import('eslint').Rule.Node} node The node to report.
      */
     function checkCallExpression({ callee }, node) {
       if (
         isInPromise(context, node) &&
         callee.type === 'MemberExpression' &&
-        callee.object.name === 'Promise'
+        'name' in callee.object &&
+        callee.object.name === 'Promise' &&
+        'name' in callee.property
       ) {
         if (callee.property.name === 'resolve') {
           context.report({ node, messageId: 'resolve' })
@@ -88,6 +98,9 @@ module.exports = {
           checkCallExpression(node.argument, node)
         }
       },
+      /**
+       * @param {import('estree').CallExpression & import('eslint').Rule.Node} node
+       */
       'ArrowFunctionExpression > CallExpression'(node) {
         checkCallExpression(node, node)
       },

@@ -9,5 +9,9 @@ test('rule set', () => {
   expect(plugin.configs.recommended.rules).toEqual(
     plugin.configs['flat/recommended'].rules,
   )
-  expect(plugin.configs['flat/recommended'].plugins.promise).toBe(plugin)
+  expect(
+    /** @type {Record<string, import('eslint').ESLint.Plugin> } */ (
+      plugin.configs['flat/recommended'].plugins
+    ).promise,
+  ).toBe(plugin)
 })

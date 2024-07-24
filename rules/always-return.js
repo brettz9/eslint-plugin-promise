@@ -3,8 +3,8 @@
 const getDocsUrl = require('./lib/get-docs-url')
 
 /**
- * @typedef {import('estree').Node} Node
- * @typedef {import('estree').SimpleCallExpression} CallExpression
+ * @typedef {import('eslint').Rule.Node} Node
+ * @typedef {import('estree').SimpleCallExpression & Node} CallExpression
  * @typedef {import('estree').FunctionExpression} FunctionExpression
  * @typedef {import('estree').ArrowFunctionExpression} ArrowFunctionExpression
  * @typedef {import('eslint').Rule.CodePath} CodePath
@@ -44,7 +44,10 @@ function isMemberCall(memberName, node) {
 /** @param {Node} node */
 function isFirstArgument(node) {
   return Boolean(
-    node.parent && node.parent.arguments && node.parent.arguments[0] === node,
+    node.parent &&
+      'arguments' in node.parent &&
+      node.parent.arguments &&
+      node.parent.arguments[0] === node,
   )
 }
 
@@ -124,6 +127,7 @@ function peek(arr) {
   return arr[arr.length - 1]
 }
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'problem',
@@ -234,7 +238,7 @@ module.exports = {
        * @param {Node} node
        */
       onCodePathEnd(path, node) {
-        const funcInfo = funcInfoStack.pop()
+        const funcInfo = /** @type {FuncInfo} */ (funcInfoStack.pop())
 
         if (!isInlineThenFunctionExpression(node)) {
           return
@@ -246,7 +250,7 @@ module.exports = {
 
         path.finalSegments.forEach((segment) => {
           const id = segment.id
-          const branch = funcInfo.branchInfoMap[id]
+          const branch = /** @type {BranchInfo} */ (funcInfo.branchInfoMap[id])
           if (!branch.good) {
             context.report({
               messageId: 'thenShouldReturnOrThrow',

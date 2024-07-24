@@ -10,6 +10,7 @@ const getDocsUrl = require('./lib/get-docs-url')
 const isPromise = require('./lib/is-promise')
 const isInsideCallback = require('./lib/is-inside-callback')
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'suggestion',

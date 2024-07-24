@@ -7,6 +7,7 @@
 
 const getDocsUrl = require('./lib/get-docs-url')
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'suggestion',
@@ -23,7 +24,7 @@ module.exports = {
   create(context) {
     return {
       NewExpression(node) {
-        if (node.callee.name === 'Promise') {
+        if ('name' in node.callee && node.callee.name === 'Promise') {
           context.report({ node, messageId: 'avoidNew' })
         }
       },

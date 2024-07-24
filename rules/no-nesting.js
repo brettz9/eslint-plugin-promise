@@ -10,6 +10,7 @@ const getDocsUrl = require('./lib/get-docs-url')
 const hasPromiseCallback = require('./lib/has-promise-callback')
 const isInsidePromise = require('./lib/is-inside-promise')
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'suggestion',
@@ -43,11 +44,17 @@ module.exports = {
     }
 
     return {
+      /**
+       * @param {import('eslint').Rule.Node} node
+       */
       ':function'(node) {
         if (isInsidePromise(node)) {
           callbackScopes.unshift(getScope(context, node))
         }
       },
+      /**
+       * @param {import('eslint').Rule.Node} node
+       */
       ':function:exit'(node) {
         if (isInsidePromise(node)) {
           callbackScopes.shift()
@@ -102,11 +109,14 @@ module.exports = {
           closestCallbackScope,
         )) {
           if (
-            node.arguments.some(
-              (arg) =>
-                arg.range[0] <= reference.identifier.range[0] &&
-                reference.identifier.range[1] <= arg.range[1],
-            )
+            node.arguments.some((arg) => {
+              const range = /** @type {[number, number]} */ (arg.range)
+              const refIdRange = /** @type {[number, number]} */ (
+                reference.identifier.range
+              )
+
+              return range[0] <= refIdRange[0] && refIdRange[1] <= range[1]
+            })
           ) {
             // Argument callbacks refer to variables defined in the callback function.
             return

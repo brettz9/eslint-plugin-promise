@@ -12,9 +12,9 @@ const {
 } = require('./lib/is-promise-constructor')
 
 /**
- * @typedef {import('estree').Node} Node
+ * @typedef {import('eslint').Rule.Node} Node
  * @typedef {import('estree').Expression} Expression
- * @typedef {import('estree').Identifier} Identifier
+ * @typedef {import('estree').Identifier & Node} Identifier
  * @typedef {import('estree').FunctionExpression} FunctionExpression
  * @typedef {import('estree').ArrowFunctionExpression} ArrowFunctionExpression
  * @typedef {import('estree').SimpleCallExpression} CallExpression
@@ -43,6 +43,7 @@ function* iterateAllPrevPathSegments(segment) {
   /**
    * @param {CodePathSegment} segment
    * @param {CodePathSegment[]} processed
+   * @returns {Iterable<CodePathSegment[]>}
    */
   function* iterate(segment, processed) {
     if (processed.includes(segment)) {
@@ -72,6 +73,7 @@ function* iterateAllNextPathSegments(segment) {
   /**
    * @param {CodePathSegment} segment
    * @param {CodePathSegment[]} processed
+   * @returns {Iterable<CodePathSegment[]>}
    */
   function* iterate(segment, processed) {
     if (processed.includes(segment)) {
@@ -166,14 +168,14 @@ class CodePathInfo {
   }
   /**
    * @typedef {object} AlreadyResolvedData
-   * @property {Identifier} resolved
+   * @property {Identifier | null} resolved
    * @property {'certain' | 'potential'} kind
    */
 
   /**
    * Check all paths and return paths resolved multiple times.
    * @param {PromiseCodePathContext} promiseCodePathContext
-   * @returns {Iterable<AlreadyResolvedData & { node: Identifier }>}
+   * @returns {Iterable<AlreadyResolvedData & { node: Identifier|null }>}
    */
   *iterateReports(promiseCodePathContext) {
     const targets = [...this.segmentInfos.values()].filter(
@@ -264,7 +266,10 @@ class CodePathInfo {
 
     const sameRoute = findSameRoutePathSegment(segment)
     if (sameRoute) {
-      const sameRouteSegmentInfo = this._getProcessedSegmentInfo(sameRoute)
+      const sameRouteSegmentInfo = this._getProcessedSegmentInfo(
+        sameRoute,
+        promiseCodePathContext,
+      )
       if (sameRouteSegmentInfo.potentiallyResolved) {
         return {
           resolved: sameRouteSegmentInfo.potentiallyResolved,
@@ -330,16 +335,17 @@ class PromiseCodePathContext {
     /** @type {Set<string>} */
     this.resolvedSegmentIds = new Set()
   }
-  /** @param {CodePathSegment} */
+  /** @param {CodePathSegment} segment */
   addResolvedTryBlockCodePathSegment(segment) {
     this.resolvedSegmentIds.add(segment.id)
   }
-  /** @param {CodePathSegment} */
+  /** @param {CodePathSegment} segment */
   isResolvedTryBlockCodePathSegment(segment) {
     return this.resolvedSegmentIds.has(segment.id)
   }
 }
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'problem',
@@ -361,12 +367,12 @@ module.exports = {
     const reported = new Set()
     const promiseCodePathContext = new PromiseCodePathContext()
     /**
-     * @param {Identifier} node
-     * @param {Identifier} resolved
+     * @param {Identifier | null} node
+     * @param {Identifier | null} resolved
      * @param {'certain' | 'potential'} kind
      */
     function report(node, resolved, kind) {
-      if (reported.has(node)) {
+      if (!node || !resolved || reported.has(node)) {
         return
       }
       reported.add(node)
@@ -375,7 +381,10 @@ module.exports = {
         messageId:
           kind === 'certain' ? 'alreadyResolved' : 'potentiallyAlreadyResolved',
         data: {
-          line: resolved.loc.start.line,
+          line: String(
+            /** @type {import('eslint').AST.SourceLocation} */ (resolved.loc)
+              .start.line,
+          ),
         },
       })
     }
@@ -398,7 +407,11 @@ module.exports = {
     /** @type {ThrowableExpression | null} */
     let lastThrowableExpression = null
     return {
-      /** @param {FunctionExpression | ArrowFunctionExpression} node */
+      /**
+       * @param {FunctionExpression & import('eslint').Rule.Node |
+       *   ArrowFunctionExpression & import('eslint').Rule.Node
+       * } node
+       */
       'FunctionExpression, ArrowFunctionExpression'(node) {
         if (!isPromiseConstructorWithInlineExecutor(node.parent)) {
           return
@@ -415,13 +428,19 @@ module.exports = {
           // istanbul ignore next -- Usually always present.
           if (!variable) continue
           for (const reference of variable.references) {
-            resolverReferences.add(reference.identifier)
+            resolverReferences.add(
+              /** @type {Identifier} */
+              (reference.identifier),
+            )
           }
         }
 
         resolverReferencesStack.unshift(resolverReferences)
       },
-      /** @param {FunctionExpression | ArrowFunctionExpression} node */
+      /**
+       * @param {FunctionExpression & import('eslint').Rule.Node |
+       *   ArrowFunctionExpression & import('eslint').Rule.Node} node
+       */
       'FunctionExpression, ArrowFunctionExpression:exit'(node) {
         if (!isPromiseConstructorWithInlineExecutor(node.parent)) {
           return
@@ -434,7 +453,7 @@ module.exports = {
       },
       onCodePathEnd() {
         const codePathInfo = codePathInfoStack.shift()
-        if (codePathInfo.resolvedCount > 1) {
+        if (codePathInfo && codePathInfo.resolvedCount > 1) {
           verifyMultipleResolvedPath(codePathInfo, promiseCodePathContext)
         }
       },
@@ -463,11 +482,18 @@ module.exports = {
           lastThrowableExpression &&
           lastThrowableExpression.type === 'CallExpression' &&
           node.parent.type === 'TryStatement' &&
+          node.parent.range &&
+          lastThrowableExpression.range &&
           node.parent.range[0] <= lastThrowableExpression.range[0] &&
           lastThrowableExpression.range[1] <= node.parent.range[1]
         ) {
           const resolverReferences = resolverReferencesStack[0]
-          if (resolverReferences.has(lastThrowableExpression.callee)) {
+          if (
+            resolverReferences.has(
+              /** @type {Identifier} */
+              (lastThrowableExpression.callee),
+            )
+          ) {
             // Mark a segment if the last expression in the try block is a call to resolve.
             promiseCodePathContext.addResolvedTryBlockCodePathSegment(segment)
           }
@@ -479,7 +505,7 @@ module.exports = {
       onUnreachableCodePathSegmentEnd(segment) {
         codePathInfoStack[0].onSegmentExit(segment)
       },
-      /** @type {Identifier} */
+      /** @param {Identifier} node */
       'CallExpression > Identifier.callee'(node) {
         const codePathInfo = codePathInfoStack[0]
         const resolverReferences = resolverReferencesStack[0]

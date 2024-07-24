@@ -1,5 +1,6 @@
 'use strict'
 
+/** @type {import('eslint').Linter.RulesRecord} */
 const recommendedRules = {
   'promise/always-return': 'error',
   'promise/no-return-wrap': 'error',
@@ -16,7 +17,7 @@ const recommendedRules = {
 }
 
 const pluginPromise = {
-  rules: {
+  rules: /** @type {Record<String, import('eslint').Rule.RuleModule>} */ ({
     'param-names': require('./rules/param-names'),
     'no-return-wrap': require('./rules/no-return-wrap'),
     'always-return': require('./rules/always-return'),
@@ -33,24 +34,28 @@ const pluginPromise = {
     'valid-params': require('./rules/valid-params'),
     'no-multiple-resolved': require('./rules/no-multiple-resolved'),
     'spec-only': require('./rules/spec-only'),
-  },
-  rulesConfig: {
-    'param-names': 1,
-    'always-return': 1,
-    'no-return-wrap': 1,
-    'no-native': 0,
-    'catch-or-return': 1,
-  },
+  }),
+  configs: /**
+   * @type {{[key: string]: import('eslint').Linter.BaseConfig|
+   *   import('eslint').Linter.Config
+   * }}
+   */ ({}),
 }
-pluginPromise.configs = {
-  recommended: {
+
+const configs = {
+  recommended: /** @type {import('eslint').Linter.BaseConfig} */ ({
     plugins: ['promise'],
     rules: recommendedRules,
-  },
-  'flat/recommended': {
+  }),
+  'flat/recommended': /** @type {import('eslint').Linter.Config} */ ({
     name: 'promise/flat/recommended',
-    plugins: { promise: pluginPromise },
     rules: recommendedRules,
-  },
+    plugins: {
+      promise: pluginPromise,
+    },
+  }),
 }
+
+pluginPromise.configs = configs
+
 module.exports = pluginPromise

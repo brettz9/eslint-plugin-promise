@@ -2,6 +2,9 @@
 
 const isInsidePromise = require('./is-inside-promise')
 
+/**
+ * @param {import('eslint').Rule.Node} node
+ */
 function isInsideCallback(node) {
   const isFunction =
     node.type === 'FunctionExpression' ||
@@ -11,7 +14,12 @@ function isInsideCallback(node) {
   // it's totally fine to use promises inside promises
   if (isInsidePromise(node)) return
 
-  const name = node.params && node.params[0] && node.params[0].name
+  const name =
+    'params' in node &&
+    node.params &&
+    node.params[0] &&
+    'name' in node.params[0] &&
+    node.params[0].name
   const firstArgIsError = name === 'err' || name === 'error'
   const isInACallback = isFunction && firstArgIsError
   return isInACallback

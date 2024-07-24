@@ -10,6 +10,7 @@ const getDocsUrl = require('./lib/get-docs-url')
 const isPromise = require('./lib/is-promise')
 const isMemberCallWithObjectName = require('./lib/is-member-call-with-object-name')
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'problem',
@@ -56,12 +57,16 @@ module.exports = {
       terminationMethod = [terminationMethod]
     }
 
+    /**
+     * @param {import('estree').Node} expression
+     */
     function isAllowedPromiseTermination(expression) {
       // somePromise.then(a, b)
       if (
         allowThen &&
         expression.type === 'CallExpression' &&
         expression.callee.type === 'MemberExpression' &&
+        'name' in expression.callee.property &&
         expression.callee.property.name === 'then' &&
         expression.arguments.length === 2
       ) {
@@ -73,6 +78,7 @@ module.exports = {
         allowFinally &&
         expression.type === 'CallExpression' &&
         expression.callee.type === 'MemberExpression' &&
+        'name' in expression.callee.property &&
         expression.callee.property.name === 'finally' &&
         isPromise(expression.callee.object) &&
         isAllowedPromiseTermination(expression.callee.object)
@@ -84,7 +90,8 @@ module.exports = {
       if (
         expression.type === 'CallExpression' &&
         expression.callee.type === 'MemberExpression' &&
-        terminationMethod.indexOf(expression.callee.property.name) !== -1
+        'name' in expression.callee.property &&
+        terminationMethod.includes(expression.callee.property.name)
       ) {
         return true
       }

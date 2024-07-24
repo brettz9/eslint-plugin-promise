@@ -9,60 +9,119 @@ const globals = require('globals')
 
 const majorVersion = Number.parseInt(version.split('.')[0], 10)
 
-function convertConfig(config) {
-  if (config instanceof Object === false) {
-    return config
+/**
+ * @template {string|import('eslint').Linter.Config|import('eslint').RuleTester.InvalidTestCase|
+ * import('eslint').RuleTester.ValidTestCase} T
+ * @param {T} cfg
+ * @returns {T}
+ */
+function convertConfig(cfg) {
+  if (cfg instanceof Object === false) {
+    return cfg
   }
 
-  if (config.languageOptions == null) {
-    config.languageOptions = {}
+  if (cfg.languageOptions == null) {
+    cfg.languageOptions = {}
   }
 
-  if (config.parserOptions) {
-    Object.assign(config.languageOptions, config.parserOptions)
+  const config = /**
+   * @type {import('eslint').Linter.Config|
+   *   import('eslint').RuleTester.InvalidTestCase|
+   *   import('eslint').RuleTester.ValidTestCase
+   * }
+   */ (cfg)
+
+  if ('parserOptions' in config && config.parserOptions) {
+    Object.assign(
+      /** @type {import('eslint').Linter.LanguageOptions} */
+      (config.languageOptions),
+      config.parserOptions,
+    )
     delete config.parserOptions
   }
 
-  if (typeof config.parser === 'string') {
-    config.languageOptions.parser = require(config.parser)
+  if ('parser' in config && typeof config.parser === 'string') {
+    // prettier-ignore
+    {
+      /** @type {import('eslint').Linter.LanguageOptions} */ (
+        config.languageOptions
+      ).parser = require(config.parser)
+    }
     delete config.parser
   }
 
-  if (config.globals instanceof Object) {
-    config.languageOptions.globals = config.globals
-    delete config.globals
+  if ('globals' in config && config.globals instanceof Object) {
+    // prettier-ignore
+    {
+      /** @type {import('eslint').Linter.LanguageOptions} */ (
+        config.languageOptions
+      ).globals =
+        /** @type {import('eslint').Linter.Globals} */ (config.globals)
+      delete config.globals
+    }
   }
 
-  if (config.env instanceof Object) {
-    if (config.languageOptions.globals == null) {
-      config.languageOptions.globals = {}
+  if ('env' in config && config.env instanceof Object) {
+    if (
+      /** @type {import('eslint').Linter.LanguageOptions} */ (
+        config.languageOptions
+      ).globals == null
+    ) {
+      // prettier-ignore
+      {
+        /** @type {import('eslint').Linter.LanguageOptions} */ (
+          config.languageOptions
+        ).globals = {}
+      }
     }
 
     for (const key in config.env) {
-      Object.assign(config.languageOptions.globals, globals[key])
+      Object.assign(
+        /** @type {import('eslint').Linter.LanguageOptions} */
+        (config.languageOptions).globals,
+        globals[
+          /** @type {keyof globals} */
+          (key)
+        ],
+      )
     }
 
     delete config.env
   }
 
-  delete config.parserOptions
-  delete config.parser
-
-  return config
-}
-
-exports.RuleTester = function (config = {}) {
-  if (majorVersion <= 8) {
-    return new RuleTester(config)
+  if ('parserOptions' in config) {
+    delete config.parserOptions
+  }
+  if ('parser' in config) {
+    delete config.parser
   }
 
-  const ruleTester = new RuleTester(convertConfig(config))
-  const $run = ruleTester.run.bind(ruleTester)
-  ruleTester.run = function (name, rule, tests) {
+  return /** @type {T} */ (config)
+}
+
+exports.RuleTester = class {
+  constructor(config = {}) {
+    if (majorVersion <= 8) {
+      // @ts-expect-error For ESLint 8
+      return new RuleTester(config)
+    }
+
+    const ruleTester = new RuleTester(convertConfig(config))
+    this.$run = ruleTester.run.bind(ruleTester)
+  }
+
+  /**
+   * @param {string} name
+   * @param {import('eslint').Rule.RuleModule} rule
+   * @param {{
+   *   valid: Array<string | import('eslint').RuleTester.ValidTestCase>;
+   *   invalid: import('eslint').RuleTester.InvalidTestCase[];
+   * }} tests
+   */
+  run(name, rule, tests) {
     tests.valid = tests.valid.map(convertConfig)
     tests.invalid = tests.invalid.map(convertConfig)
 
-    $run(name, rule, tests)
+    return this.$run && this.$run(name, rule, tests)
   }
-  return ruleTester
 }

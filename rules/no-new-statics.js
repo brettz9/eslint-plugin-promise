@@ -3,6 +3,7 @@
 const PROMISE_STATICS = require('./lib/promise-statics')
 const getDocsUrl = require('./lib/get-docs-url')
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'problem',
@@ -21,18 +22,25 @@ module.exports = {
       NewExpression(node) {
         if (
           node.callee.type === 'MemberExpression' &&
+          'name' in node.callee.object &&
           node.callee.object.name === 'Promise' &&
-          PROMISE_STATICS[node.callee.property.name]
+          'name' in node.callee.property &&
+          node.callee.property.name in PROMISE_STATICS &&
+          PROMISE_STATICS[
+            /** @type {keyof PROMISE_STATICS} */
+            (node.callee.property.name)
+          ]
         ) {
           context.report({
             node,
             messageId: 'avoidNewStatic',
             data: { name: node.callee.property.name },
             fix(fixer) {
-              return fixer.replaceTextRange(
-                [node.range[0], node.range[0] + 'new '.length],
-                '',
-              )
+              const x =
+                /** @type {import('estree').Node & {range: [number, number]}} */ (
+                  node
+                ).range[0]
+              return fixer.replaceTextRange([x, x + 'new '.length], '')
             },
           })
         }

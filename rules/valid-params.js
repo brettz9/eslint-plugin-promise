@@ -3,6 +3,7 @@
 const getDocsUrl = require('./lib/get-docs-url')
 const isPromise = require('./lib/is-promise')
 
+/** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
     type: 'problem',
@@ -28,7 +29,10 @@ module.exports = {
           return
         }
 
-        const name = node.callee.property.name
+        const name = /** @type {import('estree').Identifier} */ (
+          /** @type {import('estree').MemberExpression} */ (node.callee)
+            .property
+        ).name
         const numArgs = node.arguments.length
 
         // istanbul ignore next -- `isPromise` filters out others
@@ -39,7 +43,7 @@ module.exports = {
               context.report({
                 node,
                 messageId: 'requireOneOptionalArgument',
-                data: { name, numArgs },
+                data: { name, numArgs: String(numArgs) },
               })
             }
             break
@@ -48,7 +52,7 @@ module.exports = {
               context.report({
                 node,
                 messageId: 'requireTwoOptionalArguments',
-                data: { name, numArgs },
+                data: { name, numArgs: String(numArgs) },
               })
             }
             break
@@ -62,7 +66,7 @@ module.exports = {
               context.report({
                 node,
                 messageId: 'requireOneArgument',
-                data: { name, numArgs },
+                data: { name, numArgs: String(numArgs) },
               })
             }
             break

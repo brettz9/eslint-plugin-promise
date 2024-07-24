@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.prod",
+  "compilerOptions": {
+    "noEmit": true,
+    "emitDeclarationOnly": false,
+    "resolveJsonModule": true
+  },
+  "include": ["index.js", "rules/**/*.js", "__tests__"]
+}
